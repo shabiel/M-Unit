@@ -1,4 +1,4 @@
-%ut ;VEN-SMH/JLI - PRIMARY PROGRAM FOR M-UNIT TESTING ;2015-12-31  10:46 PM
+%ut ;VEN-SMH/JLI - PRIMARY PROGRAM FOR M-UNIT TESTING ;2016-05-03  1:24 PM
  ;;1.4;MASH;;Feb 27, 2016;Build 1
  ; Submitted to OSEHRA Dec 16, 2015 by Joel L. Ivey under the Apache 2 license (http://www.apache.org/licenses/LICENSE-2.0.html)
  ; Original routine authored by Joel L. Ivey as XTMUNIT while working for U.S. Department of Veterans Affairs 2003-2012
@@ -21,6 +21,7 @@ EN(%utRNAM,%utVERB,%utBREAK) ; .SR Entry point with primary test routine name
  ; %utVERB: (optional) 1 for verbose output or 2 for verbose and timing info.
  ; %utBREAK:(optional) bool - Break upon error or upon failure
  N %utLIST,%utROU,%ut
+ I '+$G(%utVERB) S %utVERB=0
  S %utLIST=1,%utROU(%utLIST)=%utRNAM
  K ^TMP("%ut",$J,"UTVALS")
  D SETUT
@@ -109,6 +110,10 @@ EN1(%utROU,%utLIST) ;
  . . . I +$SY=0  S %utStart=$P($SYSTEM.Process.GetCPUTime(),",")+$P($SYSTEM.Process.GetCPUTime(),",",2)
  . . . I +$SY=47 S %utStart=$ZGETJPI("","CPUTIM")*10
  . . ;
+ . . I %utVERB=3 N %utStart D  ; Time Start
+ . . . I +$SY=0  S %utStart=$P($SYSTEM.Process.GetCPUTime(),",")+$P($SYSTEM.Process.GetCPUTime(),",",2)
+ . . . I +$SY=47 N V S V=$$GTMVER(0),%utStart=$s(V'<6.2&($P(V,"-",2)'<2):$ZH,1:0)
+ . . ;
  . . ; Run the test!
  . . D @%ut("ENT")
  . . ;
@@ -116,6 +121,11 @@ EN1(%utROU,%utLIST) ;
  . . . I +$SY=0  S %utEnd=$P($SYSTEM.Process.GetCPUTime(),",")+$P($SYSTEM.Process.GetCPUTime(),",",2)
  . . . I +$SY=47 S %utEnd=$ZGETJPI("","CPUTIM")*10
  . . . S %utElapsed=%utEnd-%utStart_"ms"
+ . . ;
+ . . I %utVERB=3 N %utEnd,%utElapsed D  ; Time End
+ . . . I +$SY=0  S %utEnd=$P($SYSTEM.Process.GetCPUTime(),",")+$P($SYSTEM.Process.GetCPUTime(),",",2)
+ . . . I +$SY=47 N V S V=$$GTMVER(0),%utEnd=$s(V'<6.2&($P(V,"-",2)'<2):$ZH,1:0)
+ . . . S %utElapsed=$$ZHDIF(%utStart,%utEnd)_"ms"
  . . ;
  . . ; Run Teardown Code (only if present)
  . . S %ut("ENT")=$G(%ut("TEARDOWN"))
@@ -146,12 +156,12 @@ VERBOSE(%utETRY,SUCCESS,%utVERB,%utElapsed) ; Say whether we succeeded or failed
  ; ZEXCEPT: %ut - NEWED IN EN
  D SETIO^%ut1
  N RM S RM=73 ; Right Margin
- I %utVERB=2,$G(%utElapsed)]"" S RM=RM-$L(%utElapsed)-1
+ I 23[%utVERB,$G(%utElapsed)]"" S RM=RM-$L(%utElapsed)-1
  N I F I=$X+3:1:RM W "-"
  W ?RM
  I $G(SUCCESS) W "[OK]"
  E  W "[FAIL]"
- I %utVERB=2,$G(%utElapsed)]"" W " ",%utElapsed
+ I 23[%utVERB,$G(%utElapsed)]"" W " ",%utElapsed
  D RESETIO^%ut1
  Q
  ;
@@ -465,3 +475,19 @@ GUINEXT(%utRSLT,%utLOC,XTGUISEP) ; Entry point for GUI execute next test - calle
  K ^TMP("%ut",$J,"UTVALS")
  Q
  ;
+GTMVER(X) ;return OS version, X=1 - return OS
+ Q $S($G(X):$P($ZV," ",3,99),1:$P($P($ZV," V",2)," "))
+ ;
+ZHDIF(%ZH0,%ZH1) ;Display dif of two $ZH's
+ N SC0 S SC0=$P(%ZH0,",",2)
+ N SC1 S SC1=$P(%ZH1,",",2)
+ N DC0 S DC0=$P(%ZH0,",")*86400
+ N DC1 S DC1=$P(%ZH1,",")*86400
+ N MCS0 S MCS0=$P(%ZH0,",",3)/1000000
+ N MCS1 S MCS1=$P(%ZH1,",",3)/1000000
+ ;
+ N T0 S T0=SC0+DC0+MCS0
+ N T1 S T1=SC1+DC1+MCS1
+ ;
+ S %ZH2=T1-T0*1000
+ QUIT %ZH2
